@@ -72,6 +72,59 @@ export function isAgreementRequiredBody(responseBody: string | undefined): boole
 }
 
 // ---------------------------------------------------------------------------
+// Base URL normalization
+// ---------------------------------------------------------------------------
+
+/**
+ * Normalize a user-supplied base URL for an `@ai-sdk/*` provider.
+ *
+ * The AI SDK providers expect `baseURL` to already include the API version
+ * segment (e.g. `/v1`, `/v1beta`) and append only the operation path
+ * (`/messages`, `/models`, etc). Users who paste just the host with no version
+ * path (e.g. `https://api.anthropic.com` instead of `https://api.anthropic.com/v1`)
+ * end up hitting `/messages` and `/models` instead of `/v1/messages` and
+ * `/v1/models`, which 404. The model-list fetch then falls back to an empty
+ * list and the provider looks unconfigured.
+ *
+ * This appends the version segment when the value is exactly the known host
+ * with no path, but leaves any other host untouched so custom proxies/gateways
+ * that legitimately route without a version segment keep working.
+ *
+ * @param baseUrl User-configured base URL, or undefined to use the default.
+ * @param host Known public API host, no trailing slash (e.g. `https://api.anthropic.com`).
+ * @param version Version segment to ensure, no slashes (e.g. `v1`, `v1beta`).
+ * @returns The resolved base URL with no trailing slash.
+ *
+ * @example
+ * normalizeProviderBaseUrl(undefined, "https://api.anthropic.com", "v1")
+ * // "https://api.anthropic.com/v1"
+ * normalizeProviderBaseUrl("https://api.anthropic.com", "https://api.anthropic.com", "v1")
+ * // "https://api.anthropic.com/v1"
+ * normalizeProviderBaseUrl("https://my-proxy.example/anthropic", "https://api.anthropic.com", "v1")
+ * // "https://my-proxy.example/anthropic"  (left untouched)
+ */
+export function normalizeProviderBaseUrl(
+	baseUrl: string | undefined,
+	host: string,
+	version: string,
+): string {
+	const hostTrimmed = host.replace(/\/+$/, "");
+	const fullDefault = `${hostTrimmed}/${version}`;
+
+	// Treat undefined, empty, and whitespace-only as "unset" so a blank
+	// setting falls back to the default instead of building `/models`.
+	const trimmed = baseUrl?.trim().replace(/\/+$/, "");
+	if (!trimmed) return fullDefault;
+
+	// Only rewrite the known host when it has no version path; leave custom
+	// proxies/gateways (any other host) alone.
+	if (trimmed === hostTrimmed) {
+		return fullDefault;
+	}
+	return trimmed;
+}
+
+// ---------------------------------------------------------------------------
 // Path
 // ---------------------------------------------------------------------------
 
