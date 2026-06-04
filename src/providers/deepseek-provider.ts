@@ -71,7 +71,8 @@ export function registerDeepSeekProvider(registry: ProviderRegistry, logger: Log
 		if (credentials.type !== "apikey") {
 			throw new Error(`DeepSeek provider requires API key credentials, got: ${credentials.type}`);
 		}
-		const baseUrl = (credentials.baseUrl?.trim() || DEEPSEEK_HOST).replace(/\/+$/, "");
+		// undefined when unset so the SDK keeps its default and env fallback.
+		const baseUrl = credentials.baseUrl?.trim().replace(/\/+$/, "") || undefined;
 		return new DeepSeekClient(credentials.apiKey, baseUrl, credentials.customHeaders);
 	});
 }

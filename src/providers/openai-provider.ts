@@ -9,7 +9,7 @@ import {
 import { OpenAIClient } from "../model-clients/OpenAIClient";
 import type { Logger, ModelInfo } from "../types";
 import type { ApiKeyCredentials } from "../types";
-import { normalizeProviderBaseUrl } from "../utils";
+import { normalizeConfiguredBaseUrl, normalizeProviderBaseUrl } from "../utils";
 import { createCachedModelFetcher } from "./cached-model-fetcher";
 import { getOpenAIModelName } from "./openai-model-names";
 import type { ProviderRegistry } from "./ProviderRegistry";
@@ -125,7 +125,7 @@ export function registerOpenAIProvider(registry: ProviderRegistry, logger: Logge
 		}
 		return new OpenAIClient(
 			credentials.apiKey,
-			normalizeProviderBaseUrl(credentials.baseUrl, OPENAI_HOST, "v1"),
+			normalizeConfiguredBaseUrl(credentials.baseUrl, OPENAI_HOST, "v1"),
 			"responses",
 			undefined,
 			credentials.customHeaders,

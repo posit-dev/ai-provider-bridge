@@ -6,7 +6,7 @@ import { getAnthropicModelCapabilities } from "../model-capabilities/anthropic-h
 import { AnthropicClient } from "../model-clients/AnthropicClient";
 import type { Logger } from "../types";
 import type { ApiKeyCredentials } from "../types";
-import { normalizeProviderBaseUrl } from "../utils";
+import { normalizeConfiguredBaseUrl, normalizeProviderBaseUrl } from "../utils";
 import { createCachedModelFetcher } from "./cached-model-fetcher";
 import type { ProviderRegistry } from "./ProviderRegistry";
 
@@ -69,7 +69,7 @@ export function registerAnthropicProvider(registry: ProviderRegistry, logger: Lo
 		}
 		return new AnthropicClient(
 			credentials.apiKey,
-			normalizeProviderBaseUrl(credentials.baseUrl, ANTHROPIC_HOST, "v1"),
+			normalizeConfiguredBaseUrl(credentials.baseUrl, ANTHROPIC_HOST, "v1"),
 			credentials.customHeaders,
 		);
 	});

@@ -76,52 +76,79 @@ export function isAgreementRequiredBody(responseBody: string | undefined): boole
 // ---------------------------------------------------------------------------
 
 /**
- * Normalize a user-supplied base URL for an `@ai-sdk/*` provider.
+ * Normalize an explicitly configured base URL for an `@ai-sdk/*` provider, or
+ * return `undefined` when the user has not set one.
  *
  * The AI SDK providers expect `baseURL` to already include the API version
  * segment (e.g. `/v1`, `/v1beta`) and append only the operation path
  * (`/messages`, `/models`, etc). Users who paste just the host with no version
  * path (e.g. `https://api.anthropic.com` instead of `https://api.anthropic.com/v1`)
  * end up hitting `/messages` and `/models` instead of `/v1/messages` and
- * `/v1/models`, which 404. The model-list fetch then falls back to an empty
- * list and the provider looks unconfigured.
+ * `/v1/models`, which 404.
  *
- * This appends the version segment when the value is exactly the known host
- * with no path, but leaves any other host untouched so custom proxies/gateways
- * that legitimately route without a version segment keep working.
+ * Returning `undefined` for an unset value matters for chat client
+ * construction: it lets the SDK apply its own default and base-URL env vars
+ * (`OPENAI_BASE_URL`, `ANTHROPIC_BASE_URL`, etc), which non-Positron hosts may
+ * rely on. Passing an explicit default here would silently disable that.
+ *
+ * When a value is set, this appends the version segment if it's exactly the
+ * known host with no path, but leaves any other host untouched so custom
+ * proxies/gateways that legitimately route without a version segment keep
+ * working.
+ *
+ * @param baseUrl User-configured base URL, or undefined/blank if unset.
+ * @param host Known public API host, no trailing slash (e.g. `https://api.anthropic.com`).
+ * @param version Version segment to ensure, no slashes (e.g. `v1`, `v1beta`).
+ * @returns The normalized base URL with no trailing slash, or `undefined` when unset.
+ *
+ * @example
+ * normalizeConfiguredBaseUrl(undefined, "https://api.anthropic.com", "v1")
+ * // undefined  (let the SDK apply its default / env fallback)
+ * normalizeConfiguredBaseUrl("https://api.anthropic.com", "https://api.anthropic.com", "v1")
+ * // "https://api.anthropic.com/v1"
+ * normalizeConfiguredBaseUrl("https://my-proxy.example/anthropic", "https://api.anthropic.com", "v1")
+ * // "https://my-proxy.example/anthropic"  (left untouched)
+ */
+export function normalizeConfiguredBaseUrl(
+	baseUrl: string | undefined,
+	host: string,
+	version: string,
+): string | undefined {
+	// Treat undefined, empty, and whitespace-only as "unset" so the SDK can
+	// still apply its own default and base-URL env vars.
+	const trimmed = baseUrl?.trim().replace(/\/+$/, "");
+	if (!trimmed) return undefined;
+
+	// Only rewrite the known host when it has no version path; leave custom
+	// proxies/gateways (any other host) alone.
+	const hostTrimmed = host.replace(/\/+$/, "");
+	if (trimmed === hostTrimmed) {
+		return `${hostTrimmed}/${version}`;
+	}
+	return trimmed;
+}
+
+/**
+ * Like {@link normalizeConfiguredBaseUrl}, but returns the versioned default
+ * (`host/version`) when the base URL is unset.
+ *
+ * Use this for direct fetches (model discovery) that need a concrete URL to
+ * build `/models` against and have no SDK env fallback to defer to. Use
+ * {@link normalizeConfiguredBaseUrl} for chat client construction instead.
  *
  * @param baseUrl User-configured base URL, or undefined to use the default.
  * @param host Known public API host, no trailing slash (e.g. `https://api.anthropic.com`).
  * @param version Version segment to ensure, no slashes (e.g. `v1`, `v1beta`).
  * @returns The resolved base URL with no trailing slash.
- *
- * @example
- * normalizeProviderBaseUrl(undefined, "https://api.anthropic.com", "v1")
- * // "https://api.anthropic.com/v1"
- * normalizeProviderBaseUrl("https://api.anthropic.com", "https://api.anthropic.com", "v1")
- * // "https://api.anthropic.com/v1"
- * normalizeProviderBaseUrl("https://my-proxy.example/anthropic", "https://api.anthropic.com", "v1")
- * // "https://my-proxy.example/anthropic"  (left untouched)
  */
 export function normalizeProviderBaseUrl(
 	baseUrl: string | undefined,
 	host: string,
 	version: string,
 ): string {
-	const hostTrimmed = host.replace(/\/+$/, "");
-	const fullDefault = `${hostTrimmed}/${version}`;
-
-	// Treat undefined, empty, and whitespace-only as "unset" so a blank
-	// setting falls back to the default instead of building `/models`.
-	const trimmed = baseUrl?.trim().replace(/\/+$/, "");
-	if (!trimmed) return fullDefault;
-
-	// Only rewrite the known host when it has no version path; leave custom
-	// proxies/gateways (any other host) alone.
-	if (trimmed === hostTrimmed) {
-		return fullDefault;
-	}
-	return trimmed;
+	return (
+		normalizeConfiguredBaseUrl(baseUrl, host, version) ?? `${host.replace(/\/+$/, "")}/${version}`
+	);
 }
 
 // ---------------------------------------------------------------------------

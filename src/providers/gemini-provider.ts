@@ -6,7 +6,7 @@ import { getGeminiModelCapabilities } from "../model-capabilities/gemini-helpers
 import { GeminiClient } from "../model-clients/GeminiClient";
 import type { Logger, ModelInfo } from "../types";
 import type { ApiKeyCredentials } from "../types";
-import { normalizeProviderBaseUrl } from "../utils";
+import { normalizeConfiguredBaseUrl, normalizeProviderBaseUrl } from "../utils";
 import { createCachedModelFetcher } from "./cached-model-fetcher";
 import type { ProviderRegistry } from "./ProviderRegistry";
 
@@ -127,7 +127,7 @@ export function registerGeminiProvider(registry: ProviderRegistry, logger: Logge
 		}
 		return new GeminiClient(
 			credentials.apiKey,
-			normalizeProviderBaseUrl(credentials.baseUrl, GEMINI_HOST, "v1beta"),
+			normalizeConfiguredBaseUrl(credentials.baseUrl, GEMINI_HOST, "v1beta"),
 			credentials.customHeaders,
 		);
 	});
