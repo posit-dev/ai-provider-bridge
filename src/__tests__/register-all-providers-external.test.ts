@@ -55,6 +55,12 @@ describe("registerAllProviders (external)", () => {
 		expect(registerPositAiProvider).not.toHaveBeenCalled();
 	});
 
+	it("registers nothing when allowedProviders is empty", () => {
+		registerAllProviders(registry, mockLogger, { positAiBaseUrl: BASE_URL, allowedProviders: [] });
+
+		expect(registerPositAiProvider).not.toHaveBeenCalled();
+	});
+
 	it("ignores bedrock and google-vertex callbacks (no other provider registers)", () => {
 		const bedrockCallbacks = { onProviderStatusChange: vi.fn().mockResolvedValue(undefined) };
 		const googleVertexCallbacks = { onProviderStatusChange: vi.fn().mockResolvedValue(undefined) };

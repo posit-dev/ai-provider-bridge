@@ -5,6 +5,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { ProviderRegistry } from "../providers/ProviderRegistry";
+import { PROVIDER_IDS } from "../types";
 import type { Logger } from "../types";
 
 // Mock every provider module so the register functions are spies and no SDK code loads.
@@ -82,9 +83,19 @@ describe("registerAllProviders (internal)", () => {
 	it("registers all 14 providers when allowedProviders is omitted", () => {
 		registerAllProviders(registry, mockLogger, { positAiBaseUrl: BASE_URL, userAgent: USER_AGENT });
 
-		expect(allRegisterFns).toHaveLength(14);
+		// Tie the count to PROVIDER_IDS (the source of truth) so a provider added there
+		// but forgotten in the orchestrator is caught.
+		expect(allRegisterFns).toHaveLength(PROVIDER_IDS.length);
 		for (const fn of allRegisterFns) {
 			expect(fn).toHaveBeenCalledTimes(1);
+		}
+	});
+
+	it("registers nothing when allowedProviders is empty", () => {
+		registerAllProviders(registry, mockLogger, { positAiBaseUrl: BASE_URL, allowedProviders: [] });
+
+		for (const fn of allRegisterFns) {
+			expect(fn).not.toHaveBeenCalled();
 		}
 	});
 
