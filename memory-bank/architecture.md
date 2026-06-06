@@ -106,6 +106,12 @@ External builds alias provider files to their `-external` variants via the consu
 
 Both orchestrator variants share `src/provider-allow-list.ts` (`isProviderAllowed`) so `allowedProviders` is honored identically across builds. The helper imports only `type ProviderId`, so it adds no runtime code to the external bundle.
 
+## Dependencies
+
+The bridge owns its provider SDKs: all of them are regular `dependencies`, so a consumer installs them transitively and only needs to declare `ai-provider-bridge` in its own `package.json`. The `ai` types in the public API (e.g. `ModelMessage` on `ModelClient.chat`) are re-exported from the root entrypoint for the same reason, so consumers do not import `ai` directly either. The SDKs are marked `external` in `esbuild.config.ts` so they resolve from `node_modules` rather than being inlined -- several (`@aws-sdk/*`, `google-auth-library`) bundle poorly. `vscode` is the only optional peer dependency (host-provided; imported solely by `/positron`).
+
+Trade-off: an external / positai-only build still _installs_ every SDK even though its bundle references only the Posit AI ones. The external **bundle** stays slim via the `-external` aliasing above; the external **install** is not slimmed -- that is the cost of letting consumers depend on `ai-provider-bridge` alone.
+
 ## Guidance for New Code
 
 - **New provider modules, model clients, and capability helpers** go in `src/providers/`, `src/model-clients/`, and `src/model-capabilities/`

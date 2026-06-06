@@ -32,6 +32,12 @@ export type { ClientFactory, ModelFetcher } from "./providers/ProviderRegistry";
 // ModelClient interface
 export type { ModelClient } from "./model-clients/ModelClient";
 
+// AI SDK message type surfaced through the bridge so consumers can build chat
+// requests without importing `ai` directly (it appears in ModelClient.chat's
+// `messages`). Other `ai` types in the public surface are already re-exported as
+// LMStreamPart and AiToolWithJsonSchema.
+export type { ModelMessage } from "ai";
+
 // StepLogger interface
 export type { StepLogData, StepLogger } from "./StepLogger";
 
