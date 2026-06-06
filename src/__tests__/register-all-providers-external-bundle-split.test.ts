@@ -13,6 +13,11 @@ import { describe, expect, it } from "vitest";
 // re-exports of register-all-providers.ts, dragging every SDK into the lightweight bundle.
 // The actual aliasing lives downstream and can't be tested here, so guard the precondition at
 // the source level instead.
+//
+// Scope: this validates the top-level `import type` / `export type` form this file uses. It
+// intentionally does not accept the inline `import { type X }` form (also bundle-safe, but not
+// the style used here), and does not catch side-effect (`import "..."`), dynamic, or
+// barrel-routed imports. Those are out of scope for this regex check.
 
 const externalSource = readFileSync(
 	fileURLToPath(new URL("../register-all-providers-external.ts", import.meta.url)),

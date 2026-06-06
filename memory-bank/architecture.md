@@ -100,9 +100,11 @@ The `/positron` entrypoint exposes `VscodeLmClient` and `listVscodeLmModels()` -
 
 External builds alias provider files to their `-external` variants via the consuming application's build configuration:
 
-- `providers.ts` -> `providers-external.ts` -- only Posit AI provider
+- `providers.ts` -> `providers-external.ts` -- only Posit AI provider. This transitively swaps the registration orchestrator `register-all-providers.ts` -> `register-all-providers-external.ts`: the external orchestrator references the full module's `ProviderRegistrationConfig` only via `import type` / `export type`, so esbuild erases it and the 14 provider SDKs never enter the external bundle. `src/__tests__/register-all-providers-external-bundle-split.test.ts` guards that those references stay type-only.
 - `types.ts` -> `types-external.ts` -- only positai provider ID and notification actions
 - `local-providers.ts` -> `local-providers-external.ts` -- empty `LOCAL_PROVIDER_IDS` and no-op `LocalProviderManager`
+
+Both orchestrator variants share `src/provider-allow-list.ts` (`isProviderAllowed`) so `allowedProviders` is honored identically across builds. The helper imports only `type ProviderId`, so it adds no runtime code to the external bundle.
 
 ## Guidance for New Code
 
