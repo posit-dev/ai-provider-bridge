@@ -5,8 +5,9 @@
 /**
  * Provider registration orchestrator (Internal Build Variant)
  *
- * Centralizes the "construct a ProviderRegistry and register every provider" loop that
- * downstream consumers would otherwise hand-roll. External builds swap to
+ * Centralizes the "register every provider into a ProviderRegistry" loop that
+ * downstream consumers would otherwise hand-roll. The caller owns the registry's
+ * lifecycle and passes it in. External builds swap to
  * register-all-providers-external.ts via bundler aliasing (through providers-external.ts).
  *
  * SYNC NOTE: The `registerAllProviders` signature must stay in sync with
