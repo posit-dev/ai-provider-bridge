@@ -9,8 +9,9 @@
  * downstream consumers would otherwise hand-roll. External builds swap to
  * register-all-providers-external.ts via bundler aliasing (through providers-external.ts).
  *
- * SYNC NOTE: The `ProviderRegistrationConfig` interface and `registerAllProviders` signature
- * must stay byte-for-byte identical with register-all-providers-external.ts.
+ * SYNC NOTE: The `registerAllProviders` signature must stay in sync with
+ * register-all-providers-external.ts. That variant re-exports the
+ * `ProviderRegistrationConfig` interface defined here, so the interface lives in one place.
  */
 
 import { registerAnthropicProvider } from "./providers/anthropic-provider";

@@ -5,13 +5,13 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { ProviderRegistry } from "../providers/ProviderRegistry";
+import { registerAllProviders } from "../register-all-providers-external";
 import type { Logger } from "../types";
 
-// Mock the only provider the external variant can register.
-vi.mock("../providers/positai-provider", () => ({ registerPositAiProvider: vi.fn() }));
-
-import { registerPositAiProvider } from "../providers/positai-provider";
-import { registerAllProviders } from "../register-all-providers-external";
+// positai is deliberately NOT mocked: we run the real register fn against a real registry and
+// record which provider IDs actually get registered. That proves the external variant ever
+// registers ONLY positai -- not just that positai registers. (registerPositAiProvider only
+// registers lazy fetchers/factories; no network or SDK work happens during registration.)
 
 const mockLogger: Logger = {
 	info: vi.fn(),
@@ -25,53 +25,58 @@ const BASE_URL = "https://posit.example.com/v1";
 
 describe("registerAllProviders (external)", () => {
 	let registry: ProviderRegistry;
+	let registeredIds: () => string[];
 
 	beforeEach(() => {
 		vi.clearAllMocks();
 		registry = new ProviderRegistry(mockLogger);
+		const fetcherSpy = vi.spyOn(registry, "registerModelFetcher");
+		const factorySpy = vi.spyOn(registry, "registerClientFactory");
+		registeredIds = () => [
+			...new Set([
+				...fetcherSpy.mock.calls.map((call) => call[0]),
+				...factorySpy.mock.calls.map((call) => call[0]),
+			]),
+		];
 	});
 
-	it("registers positai when allowedProviders is omitted", () => {
+	it("registers exactly positai when allowedProviders is omitted", () => {
 		registerAllProviders(registry, mockLogger, { positAiBaseUrl: BASE_URL });
 
-		expect(registerPositAiProvider).toHaveBeenCalledTimes(1);
+		expect(registeredIds()).toEqual(["positai"]);
 	});
 
-	it("registers positai when it is in allowedProviders", () => {
+	it("registers exactly positai when it is in allowedProviders", () => {
 		registerAllProviders(registry, mockLogger, {
 			positAiBaseUrl: BASE_URL,
 			allowedProviders: ["positai", "anthropic"],
 		});
 
-		expect(registerPositAiProvider).toHaveBeenCalledTimes(1);
+		expect(registeredIds()).toEqual(["positai"]);
 	});
 
-	it("does not register positai when allowedProviders excludes it", () => {
+	it("registers nothing when allowedProviders excludes positai", () => {
 		registerAllProviders(registry, mockLogger, {
 			positAiBaseUrl: BASE_URL,
 			allowedProviders: ["anthropic"],
 		});
 
-		expect(registerPositAiProvider).not.toHaveBeenCalled();
+		expect(registeredIds()).toEqual([]);
 	});
 
 	it("registers nothing when allowedProviders is empty", () => {
 		registerAllProviders(registry, mockLogger, { positAiBaseUrl: BASE_URL, allowedProviders: [] });
 
-		expect(registerPositAiProvider).not.toHaveBeenCalled();
+		expect(registeredIds()).toEqual([]);
 	});
 
-	it("ignores bedrock and google-vertex callbacks (no other provider registers)", () => {
-		const bedrockCallbacks = { onProviderStatusChange: vi.fn().mockResolvedValue(undefined) };
-		const googleVertexCallbacks = { onProviderStatusChange: vi.fn().mockResolvedValue(undefined) };
-
+	it("registers only positai even when bedrock/vertex callbacks are passed", () => {
 		registerAllProviders(registry, mockLogger, {
 			positAiBaseUrl: BASE_URL,
-			bedrockCallbacks,
-			googleVertexCallbacks,
+			bedrockCallbacks: { onProviderStatusChange: vi.fn().mockResolvedValue(undefined) },
+			googleVertexCallbacks: { onProviderStatusChange: vi.fn().mockResolvedValue(undefined) },
 		});
 
-		// Only positai ever registers in the external variant, regardless of config.
-		expect(registerPositAiProvider).toHaveBeenCalledTimes(1);
+		expect(registeredIds()).toEqual(["positai"]);
 	});
 });

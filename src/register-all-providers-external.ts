@@ -8,28 +8,22 @@
  * Same API surface as register-all-providers.ts but only registers the Posit AI provider.
  * Consuming packages swap to this module at build time via bundler aliasing (through
  * providers-external.ts) so that non-positai provider code (and its heavy SDK dependencies)
- * is excluded from the output bundle entirely. The callback types are imported type-only so
- * no non-positai runtime code is pulled in.
+ * is excluded from the output bundle entirely.
  *
- * SYNC NOTE: The `ProviderRegistrationConfig` interface and `registerAllProviders` signature
- * must stay byte-for-byte identical with register-all-providers.ts.
+ * SYNC NOTE: The `registerAllProviders` signature must stay in sync with
+ * register-all-providers.ts. The `ProviderRegistrationConfig` interface is re-exported from
+ * there (type-only, erased at build) so the two variants share one interface definition and
+ * no non-positai runtime code is pulled in.
  */
 
-import type { BedrockProviderCallbacks } from "./providers/bedrock-provider";
-import type { GoogleVertexProviderCallbacks } from "./providers/google-vertex-provider";
+// Re-export the shared config interface from the full module (type-only, so it brings in
+// zero non-positai runtime code). The matching `import type` gives a local binding for the
+// signature below.
+export type { ProviderRegistrationConfig } from "./register-all-providers";
 import { registerPositAiProvider } from "./providers/positai-provider";
 import type { ProviderRegistry } from "./providers/ProviderRegistry";
+import type { ProviderRegistrationConfig } from "./register-all-providers";
 import type { Logger, ProviderId } from "./types";
-
-export interface ProviderRegistrationConfig {
-	positAiBaseUrl: string;
-	userAgent?: string;
-	/** If set, only these providers register; otherwise all of them. */
-	allowedProviders?: ProviderId[];
-	/** Pre-built by the caller. The bridge must NOT construct these. */
-	bedrockCallbacks?: BedrockProviderCallbacks;
-	googleVertexCallbacks?: GoogleVertexProviderCallbacks;
-}
 
 /**
  * Register every provider with the given registry, honoring `config.allowedProviders`.

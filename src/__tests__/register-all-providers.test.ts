@@ -89,6 +89,11 @@ describe("registerAllProviders (internal)", () => {
 		for (const fn of allRegisterFns) {
 			expect(fn).toHaveBeenCalledTimes(1);
 		}
+
+		// When no callbacks are configured, the bridge forwards `undefined` -- it must never
+		// construct callbacks itself (see ProviderRegistrationConfig docs).
+		expect(registerBedrockProvider).toHaveBeenCalledWith(registry, mockLogger, undefined);
+		expect(registerGoogleVertexProvider).toHaveBeenCalledWith(registry, mockLogger, undefined);
 	});
 
 	it("registers nothing when allowedProviders is empty", () => {
