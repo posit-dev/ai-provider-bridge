@@ -20,10 +20,11 @@
 // zero non-positai runtime code). The matching `import type` gives a local binding for the
 // signature below.
 export type { ProviderRegistrationConfig } from "./register-all-providers";
+import { isProviderAllowed } from "./provider-allow-list";
 import { registerPositAiProvider } from "./providers/positai-provider";
 import type { ProviderRegistry } from "./providers/ProviderRegistry";
 import type { ProviderRegistrationConfig } from "./register-all-providers";
-import type { Logger, ProviderId } from "./types";
+import type { Logger } from "./types";
 
 /**
  * Register every provider with the given registry, honoring `config.allowedProviders`.
@@ -35,10 +36,7 @@ export function registerAllProviders(
 	logger: Logger,
 	config: ProviderRegistrationConfig,
 ): void {
-	const allowed = config.allowedProviders ? new Set(config.allowedProviders) : null;
-	const isAllowed = (id: ProviderId) => !allowed || allowed.has(id);
-
-	if (isAllowed("positai")) {
+	if (isProviderAllowed("positai", config.allowedProviders)) {
 		registerPositAiProvider(registry, config.positAiBaseUrl, config.userAgent, logger);
 	}
 }

@@ -15,6 +15,7 @@
  * `ProviderRegistrationConfig` interface defined here, so the interface lives in one place.
  */
 
+import { isProviderAllowed } from "./provider-allow-list";
 import { registerAnthropicProvider } from "./providers/anthropic-provider";
 import {
 	registerBedrockProvider,
@@ -101,11 +102,8 @@ export function registerAllProviders(
 	logger: Logger,
 	config: ProviderRegistrationConfig,
 ): void {
-	const allowed = config.allowedProviders ? new Set(config.allowedProviders) : null;
-	const isAllowed = (id: ProviderId) => !allowed || allowed.has(id);
-
 	for (const [id, register] of PROVIDER_REGISTRARS) {
-		if (isAllowed(id)) {
+		if (isProviderAllowed(id, config.allowedProviders)) {
 			register(registry, logger, config);
 		}
 	}
