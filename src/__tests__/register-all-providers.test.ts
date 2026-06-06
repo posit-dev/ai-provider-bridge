@@ -42,7 +42,7 @@ import { registerOpenAIProvider } from "../providers/openai-provider";
 import { registerOpenRouterProvider } from "../providers/openrouter-provider";
 import { registerPositAiProvider } from "../providers/positai-provider";
 import { registerSnowflakeCortexProvider } from "../providers/snowflake-cortex-provider";
-import { registerAllProviders } from "../register-all-providers";
+import { PROVIDER_REGISTRARS, registerAllProviders } from "../register-all-providers";
 
 const mockLogger: Logger = {
 	info: vi.fn(),
@@ -78,6 +78,15 @@ describe("registerAllProviders (internal)", () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
 		registry = new ProviderRegistry(mockLogger);
+	});
+
+	it("has a registrar for exactly the PROVIDER_IDS set", () => {
+		// The orchestrator filters on these ids (isAllowed keys on them), so a wrong/duplicate/
+		// missing id silently corrupts allowedProviders. Tie the labels to PROVIDER_IDS, not just
+		// the count.
+		const ids = PROVIDER_REGISTRARS.map(([id]) => id);
+		expect(ids).toHaveLength(PROVIDER_IDS.length);
+		expect(new Set(ids)).toEqual(new Set(PROVIDER_IDS));
 	});
 
 	it("registers all 14 providers when allowedProviders is omitted", () => {

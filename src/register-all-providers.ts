@@ -49,6 +49,51 @@ export interface ProviderRegistrationConfig {
 }
 
 /**
+ * One provider's registration. Receives the caller's registry/logger plus the full config so
+ * each entry pulls whatever it needs (base URL, callbacks) without the orchestrator
+ * special-casing it.
+ */
+type ProviderRegistrar = (
+	registry: ProviderRegistry,
+	logger: Logger,
+	config: ProviderRegistrationConfig,
+) => void;
+
+/**
+ * Every provider's registration, paired with its ProviderId. Exported so a test can assert the
+ * id set equals PROVIDER_IDS (the single source of truth): a mislabeled, duplicated, or missing
+ * id here would silently corrupt `allowedProviders` filtering, which keys on these labels.
+ */
+export const PROVIDER_REGISTRARS: readonly [ProviderId, ProviderRegistrar][] = [
+	[
+		"positai",
+		(registry, logger, config) =>
+			registerPositAiProvider(registry, config.positAiBaseUrl, config.userAgent, logger),
+	],
+	["anthropic", (registry, logger) => registerAnthropicProvider(registry, logger)],
+	["copilot", (registry, logger) => registerCopilotProvider(registry, logger)],
+	["openai", (registry, logger) => registerOpenAIProvider(registry, logger)],
+	["openrouter", (registry, logger) => registerOpenRouterProvider(registry, logger)],
+	["ollama", (registry, logger) => registerOllamaProvider(registry, logger)],
+	["lmstudio", (registry, logger) => registerLMStudioProvider(registry, logger)],
+	[
+		"bedrock",
+		(registry, logger, config) =>
+			registerBedrockProvider(registry, logger, config.bedrockCallbacks),
+	],
+	["gemini", (registry, logger) => registerGeminiProvider(registry, logger)],
+	[
+		"google-vertex",
+		(registry, logger, config) =>
+			registerGoogleVertexProvider(registry, logger, config.googleVertexCallbacks),
+	],
+	["openai-compatible", (registry, logger) => registerOpenAICompatibleProvider(registry, logger)],
+	["ms-foundry", (registry, logger) => registerFoundryProvider(registry, logger)],
+	["snowflake-cortex", (registry, logger) => registerSnowflakeCortexProvider(registry, logger)],
+	["deepseek", (registry, logger) => registerDeepSeekProvider(registry, logger)],
+];
+
+/**
  * Register every provider with the given registry, honoring `config.allowedProviders`.
  */
 export function registerAllProviders(
@@ -56,35 +101,12 @@ export function registerAllProviders(
 	logger: Logger,
 	config: ProviderRegistrationConfig,
 ): void {
-	const providers: [ProviderId, () => void][] = [
-		[
-			"positai",
-			() => registerPositAiProvider(registry, config.positAiBaseUrl, config.userAgent, logger),
-		],
-		["anthropic", () => registerAnthropicProvider(registry, logger)],
-		["copilot", () => registerCopilotProvider(registry, logger)],
-		["openai", () => registerOpenAIProvider(registry, logger)],
-		["openrouter", () => registerOpenRouterProvider(registry, logger)],
-		["ollama", () => registerOllamaProvider(registry, logger)],
-		["lmstudio", () => registerLMStudioProvider(registry, logger)],
-		["bedrock", () => registerBedrockProvider(registry, logger, config.bedrockCallbacks)],
-		["gemini", () => registerGeminiProvider(registry, logger)],
-		[
-			"google-vertex",
-			() => registerGoogleVertexProvider(registry, logger, config.googleVertexCallbacks),
-		],
-		["openai-compatible", () => registerOpenAICompatibleProvider(registry, logger)],
-		["ms-foundry", () => registerFoundryProvider(registry, logger)],
-		["snowflake-cortex", () => registerSnowflakeCortexProvider(registry, logger)],
-		["deepseek", () => registerDeepSeekProvider(registry, logger)],
-	];
-
 	const allowed = config.allowedProviders ? new Set(config.allowedProviders) : null;
 	const isAllowed = (id: ProviderId) => !allowed || allowed.has(id);
 
-	for (const [id, register] of providers) {
+	for (const [id, register] of PROVIDER_REGISTRARS) {
 		if (isAllowed(id)) {
-			register();
+			register(registry, logger, config);
 		}
 	}
 }
