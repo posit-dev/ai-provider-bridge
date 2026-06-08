@@ -50,6 +50,18 @@ export interface ProviderRegistrationConfig {
 }
 
 /**
+ * Shared signature for the registration orchestrator. Both build variants annotate their
+ * `registerAllProviders` export with this, so the internal and external functions cannot drift in
+ * arity or return type. The external variant re-exports this type-only (erased at build), so it
+ * adds no runtime code to the lightweight external bundle.
+ */
+export type RegisterAllProviders = (
+	registry: ProviderRegistry,
+	logger: Logger,
+	config: ProviderRegistrationConfig,
+) => void;
+
+/**
  * One provider's registration. Receives the caller's registry/logger plus the full config so
  * each entry pulls whatever it needs (base URL, callbacks) without the orchestrator
  * special-casing it.
@@ -97,14 +109,10 @@ export const PROVIDER_REGISTRARS: readonly [ProviderId, ProviderRegistrar][] = [
 /**
  * Register every provider with the given registry, honoring `config.allowedProviders`.
  */
-export function registerAllProviders(
-	registry: ProviderRegistry,
-	logger: Logger,
-	config: ProviderRegistrationConfig,
-): void {
+export const registerAllProviders: RegisterAllProviders = (registry, logger, config) => {
 	for (const [id, register] of PROVIDER_REGISTRARS) {
 		if (isProviderAllowed(id, config.allowedProviders)) {
 			register(registry, logger, config);
 		}
 	}
-}
+};

@@ -16,27 +16,21 @@
  * no non-positai runtime code is pulled in.
  */
 
-// Re-export the shared config interface from the full module (type-only, so it brings in
-// zero non-positai runtime code). The matching `import type` gives a local binding for the
-// signature below.
-export type { ProviderRegistrationConfig } from "./register-all-providers";
+// Re-export the shared config interface and orchestrator signature from the full module
+// (type-only, so it brings in zero non-positai runtime code). The matching `import type` gives
+// local bindings for the signature below.
+export type { ProviderRegistrationConfig, RegisterAllProviders } from "./register-all-providers";
 import { isProviderAllowed } from "./provider-allow-list";
 import { registerPositAiProvider } from "./providers/positai-provider";
-import type { ProviderRegistry } from "./providers/ProviderRegistry";
-import type { ProviderRegistrationConfig } from "./register-all-providers";
-import type { Logger } from "./types";
+import type { RegisterAllProviders } from "./register-all-providers";
 
 /**
  * Register every provider with the given registry, honoring `config.allowedProviders`.
  *
  * External builds only ship the Posit AI provider; the callback fields are ignored.
  */
-export function registerAllProviders(
-	registry: ProviderRegistry,
-	logger: Logger,
-	config: ProviderRegistrationConfig,
-): void {
+export const registerAllProviders: RegisterAllProviders = (registry, logger, config) => {
 	if (isProviderAllowed("positai", config.allowedProviders)) {
 		registerPositAiProvider(registry, config.positAiBaseUrl, config.userAgent, logger);
 	}
-}
+};
