@@ -10,25 +10,23 @@
  * lifecycle and passes it in. External builds swap to
  * register-all-providers-external.ts via bundler aliasing (through providers-external.ts).
  *
- * SYNC NOTE: The `registerAllProviders` signature must stay in sync with
- * register-all-providers-external.ts. That variant re-exports the
- * `ProviderRegistrationConfig` interface defined here, so the interface lives in one place.
+ * SYNC NOTE: Both variants share the contract in provider-registration.ts and annotate their
+ * `registerAllProviders` export with the same `RegisterAllProviders` type, so the compiler --
+ * not a comment -- keeps their signatures from drifting.
  */
 
-import { isProviderAllowed } from "./provider-allow-list";
-import { registerAnthropicProvider } from "./providers/anthropic-provider";
 import {
-	registerBedrockProvider,
-	type BedrockProviderCallbacks,
-} from "./providers/bedrock-provider";
+	isProviderAllowed,
+	type ProviderRegistrationConfig,
+	type RegisterAllProviders,
+} from "./provider-registration";
+import { registerAnthropicProvider } from "./providers/anthropic-provider";
+import { registerBedrockProvider } from "./providers/bedrock-provider";
 import { registerCopilotProvider } from "./providers/copilot-provider";
 import { registerDeepSeekProvider } from "./providers/deepseek-provider";
 import { registerFoundryProvider } from "./providers/foundry-provider";
 import { registerGeminiProvider } from "./providers/gemini-provider";
-import {
-	registerGoogleVertexProvider,
-	type GoogleVertexProviderCallbacks,
-} from "./providers/google-vertex-provider";
+import { registerGoogleVertexProvider } from "./providers/google-vertex-provider";
 import { registerLMStudioProvider } from "./providers/lmstudio-provider";
 import { registerOllamaProvider } from "./providers/ollama-provider";
 import { registerOpenAICompatibleProvider } from "./providers/openai-compatible-provider";
@@ -39,32 +37,14 @@ import type { ProviderRegistry } from "./providers/ProviderRegistry";
 import { registerSnowflakeCortexProvider } from "./providers/snowflake-cortex-provider";
 import type { Logger, ProviderId } from "./types";
 
-export interface ProviderRegistrationConfig {
-	positAiBaseUrl: string;
-	userAgent?: string;
-	/** If set, only these providers register; otherwise all of them. */
-	allowedProviders?: ProviderId[];
-	/** Pre-built by the caller. The bridge must NOT construct these. */
-	bedrockCallbacks?: BedrockProviderCallbacks;
-	googleVertexCallbacks?: GoogleVertexProviderCallbacks;
-}
-
-/**
- * Shared signature for the registration orchestrator. Both build variants annotate their
- * `registerAllProviders` export with this, so the internal and external functions cannot drift in
- * arity or return type. The external variant re-exports this type-only (erased at build), so it
- * adds no runtime code to the lightweight external bundle.
- */
-export type RegisterAllProviders = (
-	registry: ProviderRegistry,
-	logger: Logger,
-	config: ProviderRegistrationConfig,
-) => void;
+// Re-export the shared config so the `providers.ts` barrel keeps resolving it from here.
+export type { ProviderRegistrationConfig } from "./provider-registration";
 
 /**
  * One provider's registration. Receives the caller's registry/logger plus the full config so
  * each entry pulls whatever it needs (base URL, callbacks) without the orchestrator
- * special-casing it.
+ * special-casing it. Providers that ignore the config satisfy this with their plain
+ * `(registry, logger)` signature (the trailing `config` arg is simply unused).
  */
 type ProviderRegistrar = (
 	registry: ProviderRegistry,
@@ -76,6 +56,9 @@ type ProviderRegistrar = (
  * Every provider's registration, paired with its ProviderId. Exported so a test can assert the
  * id set equals PROVIDER_IDS (the single source of truth): a mislabeled, duplicated, or missing
  * id here would silently corrupt `allowedProviders` filtering, which keys on these labels.
+ *
+ * Only positai/bedrock/google-vertex need a wrapper to thread config into a non-uniform
+ * signature; the rest reference their `(registry, logger)` register fn directly.
  */
 export const PROVIDER_REGISTRARS: readonly [ProviderId, ProviderRegistrar][] = [
 	[
@@ -83,27 +66,27 @@ export const PROVIDER_REGISTRARS: readonly [ProviderId, ProviderRegistrar][] = [
 		(registry, logger, config) =>
 			registerPositAiProvider(registry, config.positAiBaseUrl, config.userAgent, logger),
 	],
-	["anthropic", (registry, logger) => registerAnthropicProvider(registry, logger)],
-	["copilot", (registry, logger) => registerCopilotProvider(registry, logger)],
-	["openai", (registry, logger) => registerOpenAIProvider(registry, logger)],
-	["openrouter", (registry, logger) => registerOpenRouterProvider(registry, logger)],
-	["ollama", (registry, logger) => registerOllamaProvider(registry, logger)],
-	["lmstudio", (registry, logger) => registerLMStudioProvider(registry, logger)],
 	[
 		"bedrock",
 		(registry, logger, config) =>
 			registerBedrockProvider(registry, logger, config.bedrockCallbacks),
 	],
-	["gemini", (registry, logger) => registerGeminiProvider(registry, logger)],
 	[
 		"google-vertex",
 		(registry, logger, config) =>
 			registerGoogleVertexProvider(registry, logger, config.googleVertexCallbacks),
 	],
-	["openai-compatible", (registry, logger) => registerOpenAICompatibleProvider(registry, logger)],
-	["ms-foundry", (registry, logger) => registerFoundryProvider(registry, logger)],
-	["snowflake-cortex", (registry, logger) => registerSnowflakeCortexProvider(registry, logger)],
-	["deepseek", (registry, logger) => registerDeepSeekProvider(registry, logger)],
+	["anthropic", registerAnthropicProvider],
+	["copilot", registerCopilotProvider],
+	["openai", registerOpenAIProvider],
+	["openrouter", registerOpenRouterProvider],
+	["ollama", registerOllamaProvider],
+	["lmstudio", registerLMStudioProvider],
+	["gemini", registerGeminiProvider],
+	["openai-compatible", registerOpenAICompatibleProvider],
+	["ms-foundry", registerFoundryProvider],
+	["snowflake-cortex", registerSnowflakeCortexProvider],
+	["deepseek", registerDeepSeekProvider],
 ];
 
 /**

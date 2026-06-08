@@ -10,19 +10,17 @@
  * providers-external.ts) so that non-positai provider code (and its heavy SDK dependencies)
  * is excluded from the output bundle entirely.
  *
- * SYNC NOTE: The `registerAllProviders` signature must stay in sync with
- * register-all-providers.ts. The `ProviderRegistrationConfig` interface is re-exported from
- * there (type-only, erased at build) so the two variants share one interface definition and
- * no non-positai runtime code is pulled in.
+ * SYNC NOTE: Both variants share the contract in provider-registration.ts. This file does NOT
+ * import register-all-providers.ts -- that is what keeps the non-positai providers and their
+ * SDKs out of the external bundle. Annotating the export with the shared `RegisterAllProviders`
+ * type keeps this signature in lock-step with the internal variant.
  */
 
-// Re-export the shared config interface and orchestrator signature from the full module
-// (type-only, so it brings in zero non-positai runtime code). The matching `import type` gives
-// local bindings for the signature below.
-export type { ProviderRegistrationConfig, RegisterAllProviders } from "./register-all-providers";
-import { isProviderAllowed } from "./provider-allow-list";
+import { isProviderAllowed, type RegisterAllProviders } from "./provider-registration";
 import { registerPositAiProvider } from "./providers/positai-provider";
-import type { RegisterAllProviders } from "./register-all-providers";
+
+// Re-export the shared config so the `providers-external.ts` barrel keeps resolving it from here.
+export type { ProviderRegistrationConfig } from "./provider-registration";
 
 /**
  * Register every provider with the given registry, honoring `config.allowedProviders`.
