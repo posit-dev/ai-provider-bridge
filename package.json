@@ -35,6 +35,11 @@
       "types": "./dist/positron/index.d.ts",
       "import": "./dist/positron/index.js",
       "default": "./dist/positron/index.js"
+    },
+    "./credential-shaping": {
+      "types": "./dist/positron/credential-shaping.d.ts",
+      "import": "./dist/positron/credential-shaping.js",
+      "default": "./dist/positron/credential-shaping.js"
     }
   },
   "files": [
