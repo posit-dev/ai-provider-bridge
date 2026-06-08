@@ -48,16 +48,15 @@ Unless otherwise noted, provider counts below refer to the **internal build**. E
 
 In the internal build:
 
-- `PROVIDER_IDS` (in `src/types.ts`) contains **14** IDs
-- `register*Provider()` functions exist for all **14** providers
+- `PROVIDER_IDS` (in `src/types.ts`) is the single source of truth for valid provider IDs; a `register*Provider()` function exists for every entry.
 - `copilot` has a full SDK-based provider (`CopilotSdkClient`, `copilot-provider.ts`) in addition to the `vscode.lm` path in Positron
 
-Positron's direct path uses:
+Positron's direct path uses two derived sets, so the counts stay correct as providers are added:
 
-- `MAPPED_PROVIDER_IDS` = **10** auth-bridge providers
-- `LOCAL_PROVIDER_IDS` = **2** local providers
+- `MAPPED_PROVIDER_IDS` -- every provider that has a `PROVIDER_MAP` auth mapping (computed from `PROVIDER_MAP`)
+- `LOCAL_PROVIDER_IDS` -- the local, endpoint-based providers
 
-That gives Positron **12** direct providers:
+Positron's direct providers are the union of those two sets. Currently:
 
 - Mapped auth providers: `anthropic`, `positai`, `openai`, `gemini`, `google-vertex`, `openai-compatible`, `bedrock`, `ms-foundry`, `snowflake-cortex`, `copilot`, `deepseek`
 - Local providers: `ollama`, `lmstudio`
