@@ -23,7 +23,13 @@ import type { ProviderRegistry } from "./providers/ProviderRegistry";
 import type { Logger, ProviderId } from "./types";
 
 export interface ProviderRegistrationConfig {
-	positAiBaseUrl: string;
+	/**
+	 * Posit AI base URL. Accepts a getter so callers can resolve it lazily at fetch time --
+	 * Positron reads the `authentication.positai.baseUrl` setting this way, so changes take
+	 * effect without a reload. Flows straight through to `registerPositAiProvider`, which
+	 * accepts both forms.
+	 */
+	positAiBaseUrl: string | (() => string);
 	userAgent?: string;
 	/** If set, only these providers register; otherwise all of them. */
 	allowedProviders?: ProviderId[];

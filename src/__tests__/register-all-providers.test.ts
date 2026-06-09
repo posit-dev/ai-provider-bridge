@@ -155,4 +155,19 @@ describe("registerAllProviders (internal)", () => {
 			mockLogger,
 		);
 	});
+
+	it("forwards a function-form positAiBaseUrl unchanged (not snapshotted)", () => {
+		// Positron passes a getter so the base URL setting is read lazily at fetch time. The
+		// orchestrator must forward the function itself, not call it and snapshot the result.
+		const baseUrlGetter = () => BASE_URL;
+
+		registerAllProviders(registry, mockLogger, { positAiBaseUrl: baseUrlGetter });
+
+		expect(registerPositAiProvider).toHaveBeenCalledWith(
+			registry,
+			baseUrlGetter,
+			undefined,
+			mockLogger,
+		);
+	});
 });
