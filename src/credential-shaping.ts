@@ -13,14 +13,14 @@
  * headless language-model facade, which reads the same settings off its own
  * `IConfigurationService` instead of `vscode.workspace`.
  *
- * It imports only `./types` (types, erased) and `../utils` (a pure URL helper),
+ * It imports only `./types` (types, erased) and `./utils` (a pure URL helper),
  * so it carries no `vscode`, AI-SDK, or Node-builtin dependency and is safe to
  * bundle into a browser/renderer. Keep it that way.
  */
 
-import type { AuthProviderMapping } from "../provider-map";
-import type { Logger, ProviderCredentials } from "../types";
-import { buildSnowflakeCortexUrl } from "../utils";
+import type { AuthProviderMapping } from "./provider-map";
+import type { Logger, ProviderCredentials } from "./types";
+import { buildSnowflakeCortexUrl } from "./utils";
 
 /**
  * Auth provider ID -> VS Code settings config section.

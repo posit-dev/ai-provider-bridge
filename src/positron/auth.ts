@@ -4,14 +4,14 @@
 
 import * as vscode from "vscode";
 
-import type { CredentialProvider, Disposable } from "../CredentialProvider";
-import { MAPPED_PROVIDER_IDS, PROVIDER_MAP } from "../provider-map";
-import type { Logger, ProviderId, ProviderCredentials } from "../types";
 import {
 	CONFIG_KEY_OVERRIDES,
 	type CredentialConfig,
 	shapeCredentials,
-} from "./credential-shaping";
+} from "../credential-shaping";
+import type { CredentialProvider, Disposable } from "../CredentialProvider";
+import { MAPPED_PROVIDER_IDS, PROVIDER_MAP } from "../provider-map";
+import type { Logger, ProviderId, ProviderCredentials } from "../types";
 
 /**
  * Try to get an auth session, normalizing expected failure modes to undefined.

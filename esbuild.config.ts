@@ -21,7 +21,7 @@ const entrypoints = [
 	"src/providers.ts",
 	"src/providers-external.ts",
 	"src/positron/index.ts",
-	"src/positron/credential-shaping.ts",
+	"src/credential-shaping.ts",
 ];
 
 // Kept out of the bundle and resolved from node_modules at runtime. The provider

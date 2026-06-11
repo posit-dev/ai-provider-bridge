@@ -181,13 +181,13 @@ describe("shapeCredentials", () => {
 describe("credential-shaping stays browser-safe", () => {
 	// This module is imported into Positron's renderer (browser layer), so its
 	// runtime graph must carry no vscode, AI-SDK, or node-builtin dependency.
-	// `../utils` is the only non-type import and is itself dependency-free; the
+	// `./utils` is the only non-type import and is itself dependency-free; the
 	// rest are `import type` (erased). A new value import here would trip this.
 	it("has exactly one runtime import: the pure URL helper", () => {
 		const source = readFileSync(resolve(HERE, "../credential-shaping.ts"), "utf-8");
 		const valueImports = [...source.matchAll(/^import\s+(?!type\b)[^;]*?from\s+"([^"]+)";/gm)].map(
 			(m) => m[1],
 		);
-		expect(valueImports).toEqual(["../utils"]);
+		expect(valueImports).toEqual(["./utils"]);
 	});
 });
