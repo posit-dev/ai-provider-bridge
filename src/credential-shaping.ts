@@ -20,7 +20,7 @@
 
 import type { AuthProviderMapping } from "./provider-map";
 import type { Logger, ProviderCredentials } from "./types";
-import { buildSnowflakeCortexUrl } from "./utils";
+import { buildSnowflakeCortexUrl, buildSnowflakeCortexUrlFromHost } from "./utils";
 
 /**
  * Auth provider ID -> VS Code settings config section.
@@ -40,7 +40,7 @@ export const CONFIG_KEY_OVERRIDES: Record<string, string> = {
  * so neither caller has to.
  */
 export interface CredentialConfig {
-	/** `authentication.<configKey>.baseUrl`, normalized empty -> undefined. */
+	/** `authentication.<configKey>.baseUrl` (the shaper normalizes empty -> undefined). */
 	getBaseUrl(configKey: string): string | undefined;
 	/** `authentication.<configKey>.customHeaders`. */
 	getCustomHeaders(configKey: string): Record<string, string> | undefined;
@@ -58,7 +58,6 @@ export interface CredentialConfig {
  * the provider-extra settings.
  */
 export function shapeCredentials(
-	providerId: string,
 	mapping: Pick<AuthProviderMapping, "authProviderId" | "credentialType">,
 	rawToken: string,
 	config: CredentialConfig,
@@ -75,7 +74,7 @@ export function shapeCredentials(
 			const parsed = parseJson(rawToken);
 			if (!parsed) {
 				logger?.debug(
-					`[positron-ai] Failed to parse Google Cloud credentials JSON for ${providerId}`,
+					`[positron-ai] Failed to parse Google Cloud credentials JSON for ${mapping.authProviderId}`,
 				);
 				return null;
 			}
@@ -94,7 +93,9 @@ export function shapeCredentials(
 			// The auth ext stores {accessKeyId, secretAccessKey, sessionToken} as JSON.
 			const parsed = parseJson(rawToken);
 			if (!parsed) {
-				logger?.debug(`[positron-ai] Failed to parse AWS credentials JSON for ${providerId}`);
+				logger?.debug(
+					`[positron-ai] Failed to parse AWS credentials JSON for ${mapping.authProviderId}`,
+				);
 				return null;
 			}
 			const accessKeyId = getStringField(parsed, "accessKeyId");
@@ -117,16 +118,16 @@ export function shapeCredentials(
 			const configKey = CONFIG_KEY_OVERRIDES[mapping.authProviderId] ?? mapping.authProviderId;
 
 			let baseUrl: string | undefined;
-			if (providerId === "snowflake-cortex") {
+			if (mapping.authProviderId === "snowflake-cortex") {
 				// Snowflake URL is built from host (preferred, for private-link/RCR) or account name.
 				const snowflake = config.getSnowflake();
 				if (snowflake?.host) {
-					baseUrl = `https://${snowflake.host}/api/v2/cortex/v1`;
+					baseUrl = buildSnowflakeCortexUrlFromHost(snowflake.host);
 				} else if (snowflake?.account) {
 					baseUrl = buildSnowflakeCortexUrl(snowflake.account);
 				}
 			} else {
-				baseUrl = config.getBaseUrl(configKey);
+				baseUrl = config.getBaseUrl(configKey) || undefined;
 			}
 
 			// customHeaders share the `authentication.<configKey>` namespace with

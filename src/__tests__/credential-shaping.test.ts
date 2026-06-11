@@ -45,7 +45,7 @@ describe("shapeCredentials", () => {
 	// --- oauth ---
 
 	it("shapes an oauth token", () => {
-		expect(shapeCredentials("positai", OAUTH, "bearer-123", fakeConfig())).toEqual({
+		expect(shapeCredentials(OAUTH, "bearer-123", fakeConfig())).toEqual({
 			type: "oauth",
 			accessToken: "bearer-123",
 		});
@@ -54,7 +54,7 @@ describe("shapeCredentials", () => {
 	// --- apikey ---
 
 	it("shapes an apikey with no baseUrl/customHeaders", () => {
-		expect(shapeCredentials("openai", APIKEY, "sk-openai", fakeConfig())).toEqual({
+		expect(shapeCredentials(APIKEY, "sk-openai", fakeConfig())).toEqual({
 			type: "apikey",
 			apiKey: "sk-openai",
 			baseUrl: undefined,
@@ -64,7 +64,7 @@ describe("shapeCredentials", () => {
 
 	it("reads baseUrl under the overridden config key (anthropic-api -> anthropic)", () => {
 		const config = fakeConfig({ baseUrls: { anthropic: "https://custom.anthropic.example/v1" } });
-		expect(shapeCredentials("anthropic", ANTHROPIC, "sk-ant", config)).toEqual({
+		expect(shapeCredentials(ANTHROPIC, "sk-ant", config)).toEqual({
 			type: "apikey",
 			apiKey: "sk-ant",
 			baseUrl: "https://custom.anthropic.example/v1",
@@ -72,14 +72,21 @@ describe("shapeCredentials", () => {
 		});
 	});
 
+	it("normalizes an empty-string baseUrl from the config to undefined", () => {
+		const config = fakeConfig({ baseUrls: { anthropic: "" } });
+		expect(shapeCredentials(ANTHROPIC, "sk-ant", config)).toMatchObject({
+			baseUrl: undefined,
+		});
+	});
+
 	it("reads customHeaders under the config key and normalizes empty to undefined", () => {
 		const withHeaders = fakeConfig({ customHeaders: { anthropic: { "x-tenancy": "team-42" } } });
-		expect(shapeCredentials("anthropic", ANTHROPIC, "sk-ant", withHeaders)).toMatchObject({
+		expect(shapeCredentials(ANTHROPIC, "sk-ant", withHeaders)).toMatchObject({
 			customHeaders: { "x-tenancy": "team-42" },
 		});
 
 		const emptyHeaders = fakeConfig({ customHeaders: { anthropic: {} } });
-		expect(shapeCredentials("anthropic", ANTHROPIC, "sk-ant", emptyHeaders)).toMatchObject({
+		expect(shapeCredentials(ANTHROPIC, "sk-ant", emptyHeaders)).toMatchObject({
 			customHeaders: undefined,
 		});
 	});
@@ -90,18 +97,18 @@ describe("shapeCredentials", () => {
 		const config = fakeConfig({
 			snowflake: { host: "h.snowflakecomputing.com", account: "org-acct" },
 		});
-		expect(shapeCredentials("snowflake-cortex", SNOWFLAKE, "tok", config)).toMatchObject({
+		expect(shapeCredentials(SNOWFLAKE, "tok", config)).toMatchObject({
 			baseUrl: "https://h.snowflakecomputing.com/api/v2/cortex/v1",
 		});
 	});
 
 	it("builds the snowflake URL from account when no host, and undefined when neither", () => {
 		const fromAccount = fakeConfig({ snowflake: { account: "org-acct" } });
-		expect(shapeCredentials("snowflake-cortex", SNOWFLAKE, "tok", fromAccount)).toMatchObject({
+		expect(shapeCredentials(SNOWFLAKE, "tok", fromAccount)).toMatchObject({
 			baseUrl: "https://org-acct.snowflakecomputing.com/api/v2/cortex/v1",
 		});
 
-		expect(shapeCredentials("snowflake-cortex", SNOWFLAKE, "tok", fakeConfig())).toMatchObject({
+		expect(shapeCredentials(SNOWFLAKE, "tok", fakeConfig())).toMatchObject({
 			baseUrl: undefined,
 		});
 	});
@@ -115,7 +122,7 @@ describe("shapeCredentials", () => {
 			sessionToken: "sess",
 		});
 		const config = fakeConfig({ awsRegion: "us-west-2" });
-		expect(shapeCredentials("bedrock", AWS, token, config)).toEqual({
+		expect(shapeCredentials(AWS, token, config)).toEqual({
 			type: "aws-credentials",
 			region: "us-west-2",
 			accessKeyId: "AKIA",
@@ -126,23 +133,21 @@ describe("shapeCredentials", () => {
 
 	it("defaults the aws region to us-east-1 when config has none", () => {
 		const token = JSON.stringify({ accessKeyId: "AKIA", secretAccessKey: "secret" });
-		expect(shapeCredentials("bedrock", AWS, token, fakeConfig())).toMatchObject({
+		expect(shapeCredentials(AWS, token, fakeConfig())).toMatchObject({
 			region: "us-east-1",
 		});
 	});
 
 	it("returns null for aws when the token is not JSON or lacks required fields", () => {
-		expect(shapeCredentials("bedrock", AWS, "not-json", fakeConfig())).toBeNull();
-		expect(
-			shapeCredentials("bedrock", AWS, JSON.stringify({ accessKeyId: "AKIA" }), fakeConfig()),
-		).toBeNull();
+		expect(shapeCredentials(AWS, "not-json", fakeConfig())).toBeNull();
+		expect(shapeCredentials(AWS, JSON.stringify({ accessKeyId: "AKIA" }), fakeConfig())).toBeNull();
 	});
 
 	// --- google-cloud ---
 
 	it("shapes google-cloud with a brokered token, and without one for ADC", () => {
 		const withToken = JSON.stringify({ token: "t", project: "p", location: "us-central1" });
-		expect(shapeCredentials("google-vertex", GCP, withToken, fakeConfig())).toEqual({
+		expect(shapeCredentials(GCP, withToken, fakeConfig())).toEqual({
 			type: "google-cloud",
 			project: "p",
 			location: "us-central1",
@@ -150,7 +155,7 @@ describe("shapeCredentials", () => {
 		});
 
 		const noToken = JSON.stringify({ project: "p", location: "us-central1" });
-		expect(shapeCredentials("google-vertex", GCP, noToken, fakeConfig())).toEqual({
+		expect(shapeCredentials(GCP, noToken, fakeConfig())).toEqual({
 			type: "google-cloud",
 			project: "p",
 			location: "us-central1",
@@ -158,22 +163,12 @@ describe("shapeCredentials", () => {
 	});
 
 	it("returns null for google-cloud when the token is not JSON or lacks project/location", () => {
-		expect(shapeCredentials("google-vertex", GCP, "not-json", fakeConfig())).toBeNull();
+		expect(shapeCredentials(GCP, "not-json", fakeConfig())).toBeNull();
 		expect(
-			shapeCredentials(
-				"google-vertex",
-				GCP,
-				JSON.stringify({ token: "t", location: "us-central1" }),
-				fakeConfig(),
-			),
+			shapeCredentials(GCP, JSON.stringify({ token: "t", location: "us-central1" }), fakeConfig()),
 		).toBeNull();
 		expect(
-			shapeCredentials(
-				"google-vertex",
-				GCP,
-				JSON.stringify({ token: "t", project: "p" }),
-				fakeConfig(),
-			),
+			shapeCredentials(GCP, JSON.stringify({ token: "t", project: "p" }), fakeConfig()),
 		).toBeNull();
 	});
 });
@@ -185,9 +180,14 @@ describe("credential-shaping stays browser-safe", () => {
 	// rest are `import type` (erased). A new value import here would trip this.
 	it("has exactly one runtime import: the pure URL helper", () => {
 		const source = readFileSync(resolve(HERE, "../credential-shaping.ts"), "utf-8");
-		const valueImports = [...source.matchAll(/^import\s+(?!type\b)[^;]*?from\s+"([^"]+)";/gm)].map(
-			(m) => m[1],
-		);
+		const valueImports = [
+			// import/export ... from "x" (re-exports count; `import type`/`export type` are erased)
+			...source.matchAll(/^(?:import|export)\s+(?!type\b)[^;]*?from\s+"([^"]+)";/gm),
+			// bare side-effect imports: import "x";
+			...source.matchAll(/^import\s+"([^"]+)";/gm),
+		].map((m) => m[1]);
 		expect(valueImports).toEqual(["./utils"]);
+		// dynamic import() would also add a runtime edge
+		expect(source).not.toMatch(/\bimport\s*\(/);
 	});
 });

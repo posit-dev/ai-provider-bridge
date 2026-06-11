@@ -90,13 +90,7 @@ async function getMappedCredentials(
 
 	// The vscode session lookup above is the only auth-host-bound half; the
 	// shaping below is pure and shared with Positron's headless facade.
-	return shapeCredentials(
-		providerId,
-		mapping,
-		session.accessToken,
-		vscodeCredentialConfig(),
-		logger,
-	);
+	return shapeCredentials(mapping, session.accessToken, vscodeCredentialConfig(), logger);
 }
 
 /**
@@ -107,8 +101,7 @@ async function getMappedCredentials(
 function vscodeCredentialConfig(): CredentialConfig {
 	return {
 		getBaseUrl: (configKey) =>
-			vscode.workspace.getConfiguration("authentication").get<string>(`${configKey}.baseUrl`) ||
-			undefined,
+			vscode.workspace.getConfiguration("authentication").get<string>(`${configKey}.baseUrl`),
 		getCustomHeaders: (configKey) =>
 			vscode.workspace
 				.getConfiguration("authentication")
