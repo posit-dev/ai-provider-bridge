@@ -5,7 +5,7 @@
 import { rmSync } from "node:fs";
 import { builtinModules } from "node:module";
 
-import { build, context } from "esbuild";
+import { build, type BuildOptions, context } from "esbuild";
 
 const watch = process.argv.includes("--watch");
 
@@ -48,7 +48,7 @@ const externalDeps = [
 
 const nodeBuiltins = builtinModules.flatMap((m) => [m, `node:${m}`]);
 
-const buildOptions = {
+const buildOptions: BuildOptions = {
 	entryPoints: entrypoints,
 	bundle: true,
 	format: "esm",
@@ -58,7 +58,7 @@ const buildOptions = {
 	target: "es2022",
 	sourcemap: true,
 	splitting: true,
-} as const;
+};
 
 if (watch) {
 	const ctx = await context(buildOptions);
