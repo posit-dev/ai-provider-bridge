@@ -146,16 +146,18 @@ export function filterUnsignedReasoning(messages: readonly ModelMessage[]): Mode
 // Interactions options builder
 // ---------------------------------------------------------------------------
 
-/** Valid wire-level thinkingLevel values for the Interactions API. */
-const VALID_THINKING_LEVELS = new Set(["minimal", "low", "medium", "high"]);
-
 /**
  * Build `providerOptions.google` for a Gemini Interactions API request.
  *
  * - `store: true` always (stateful mode)
  * - `previousInteractionId` when chaining
- * - `thinkingLevel` with "off" → omit semantics
+ * - `thinkingLevel` validated against the per-model profile
  * - `thinkingSummaries: "auto"` when supported
+ *
+ * If `thinkingEffort` is `"off"` or `undefined`, `thinkingLevel` is omitted
+ * entirely (the model uses its default). Note: on default-on models like
+ * 2.5 Flash this means thinking stays active — the product-level levels
+ * should not offer "off" for those models.
  */
 export function buildInteractionsOptions(params: {
 	thinkingEffort: string | undefined;
@@ -173,15 +175,16 @@ export function buildInteractionsOptions(params: {
 		google.previousInteractionId = previousInteractionId;
 	}
 
-	// "off" → omit thinkingLevel; undefined → omit
-	if (thinkingEffort !== undefined && thinkingEffort !== "off") {
-		google.thinkingLevel = VALID_THINKING_LEVELS.has(thinkingEffort) ? thinkingEffort : "medium";
-		google.thinkingSummaries = "auto";
-	}
+	// Resolve thinkingLevel: validate against the per-model profile's valid
+	// levels and clamp to "medium" for unrecognised values. "off" and
+	// undefined both result in no thinkingLevel being set.
+	if (thinkingEffort !== undefined && thinkingEffort !== "off" && profile) {
+		const validLevels = profile.thinkingLevels;
+		google.thinkingLevel = validLevels.includes(thinkingEffort) ? thinkingEffort : "medium";
 
-	// Summaries even when thinking level is present
-	if (profile?.supportsSummaries && google.thinkingLevel) {
-		google.thinkingSummaries = "auto";
+		if (profile.supportsSummaries) {
+			google.thinkingSummaries = "auto";
+		}
 	}
 
 	return { google };
@@ -195,18 +198,24 @@ export function buildInteractionsOptions(params: {
  * Determine whether an error is an expired/invalid interaction ID error.
  *
  * Uses `APICallError`'s structured `statusCode` and `data` fields — NOT
- * message matching or the broad `isRetryable` flag (which covers 429/5xx).
+ * the broad `isRetryable` flag (which covers 429/5xx). Requires the error
+ * message to specifically mention "interaction" to avoid retrying unrelated
+ * bad-request errors (malformed tool schemas, invalid model IDs, etc.).
  */
 function isExpiredInteractionError(error: unknown): boolean {
 	if (!APICallError.isInstance(error)) return false;
-	// Google returns 400 for invalid interaction IDs
 	if (error.statusCode !== 400 && error.statusCode !== 404) return false;
 
-	// Check responseBody for interaction-related error messages
+	// Try structured data first (pre-parsed error body from Google API)
+	const data = error.data as
+		| { error?: { message?: string; status?: string; details?: unknown[] } }
+		| undefined;
+	const errMessage = data?.error?.message ?? "";
+	if (/\binteraction\b/i.test(errMessage)) return true;
+
+	// Fall back to raw response body — require "interaction" to appear
 	const body = error.responseBody ?? "";
-	return (
-		body.includes("interaction") || body.includes("INVALID_ARGUMENT") || body.includes("NOT_FOUND")
-	);
+	return /\binteraction\b/i.test(body);
 }
 
 // ---------------------------------------------------------------------------

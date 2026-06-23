@@ -29,10 +29,10 @@ describe("isInteractionsEligible", () => {
 		expect(isInteractionsEligible("gemini-3-flash-preview")).toBe(true);
 		expect(isInteractionsEligible("gemini-3.1-pro-preview")).toBe(true);
 		expect(isInteractionsEligible("gemini-3.1-flash-lite-preview")).toBe(true);
+		expect(isInteractionsEligible("gemini-3.5-flash")).toBe(true);
 	});
 
 	it("rejects excluded models (fail-closed)", () => {
-		expect(isInteractionsEligible("gemini-3.5-flash")).toBe(false);
 		expect(isInteractionsEligible("gemini-3-pro-preview")).toBe(false);
 		expect(isInteractionsEligible("gemini-2.0-flash")).toBe(false);
 		expect(isInteractionsEligible("gemini-1.5-pro")).toBe(false);
@@ -42,17 +42,34 @@ describe("isInteractionsEligible", () => {
 });
 
 describe("getGeminiInteractionsProfile", () => {
-	it("returns profile for eligible models", () => {
+	it("2.5 Pro: low/medium/high only", () => {
 		const pro = getGeminiInteractionsProfile("gemini-2.5-pro");
 		expect(pro).toBeDefined();
-		expect(pro!.canDisableThinking).toBe(false);
 		expect(pro!.thinkingLevels).toEqual(["low", "medium", "high"]);
 	});
 
-	it("flash can disable thinking", () => {
+	it("2.5 Flash: low/medium/high only (no minimal, no off)", () => {
 		const flash = getGeminiInteractionsProfile("gemini-2.5-flash");
 		expect(flash).toBeDefined();
-		expect(flash!.canDisableThinking).toBe(true);
+		expect(flash!.thinkingLevels).toEqual(["low", "medium", "high"]);
+	});
+
+	it("2.5 Flash-Lite: low/medium/high only (no minimal on Interactions API)", () => {
+		const lite = getGeminiInteractionsProfile("gemini-2.5-flash-lite");
+		expect(lite).toBeDefined();
+		expect(lite!.thinkingLevels).toEqual(["low", "medium", "high"]);
+	});
+
+	it("3-flash-preview: supports minimal thinkingLevel", () => {
+		const flash3 = getGeminiInteractionsProfile("gemini-3-flash-preview");
+		expect(flash3).toBeDefined();
+		expect(flash3!.thinkingLevels).toEqual(["minimal", "low", "medium", "high"]);
+	});
+
+	it("3.5-flash: supports minimal thinkingLevel", () => {
+		const flash35 = getGeminiInteractionsProfile("gemini-3.5-flash");
+		expect(flash35).toBeDefined();
+		expect(flash35!.thinkingLevels).toEqual(["minimal", "low", "medium", "high"]);
 	});
 
 	it("returns undefined for ineligible models", () => {
@@ -323,6 +340,15 @@ describe("buildInteractionsOptions", () => {
 		expect(result.google).not.toHaveProperty("thinkingLevel");
 	});
 
+	it("omits thinkingLevel when effort is undefined", () => {
+		const result = buildInteractionsOptions({
+			thinkingEffort: undefined,
+			modelId: "gemini-2.5-pro",
+			previousInteractionId: null,
+		});
+		expect(result.google).not.toHaveProperty("thinkingLevel");
+	});
+
 	it("includes previousInteractionId when provided", () => {
 		const result = buildInteractionsOptions({
 			thinkingEffort: "medium",
@@ -339,5 +365,44 @@ describe("buildInteractionsOptions", () => {
 			previousInteractionId: null,
 		});
 		expect(result.google.thinkingSummaries).toBe("auto");
+	});
+
+	describe("validates against per-model profile", () => {
+		it("accepts levels in the model's profile", () => {
+			const result = buildInteractionsOptions({
+				thinkingEffort: "low",
+				modelId: "gemini-2.5-pro",
+				previousInteractionId: null,
+			});
+			expect(result.google.thinkingLevel).toBe("low");
+		});
+
+		it("clamps unrecognized effort to 'medium'", () => {
+			const result = buildInteractionsOptions({
+				thinkingEffort: "ultra",
+				modelId: "gemini-2.5-pro",
+				previousInteractionId: null,
+			});
+			expect(result.google.thinkingLevel).toBe("medium");
+		});
+
+		it("rejects 'minimal' for 2.5 models (not in their profile)", () => {
+			const result = buildInteractionsOptions({
+				thinkingEffort: "minimal",
+				modelId: "gemini-2.5-flash",
+				previousInteractionId: null,
+			});
+			// minimal is not valid for 2.5 Flash — clamped to medium
+			expect(result.google.thinkingLevel).toBe("medium");
+		});
+
+		it("accepts 'minimal' for 3.x Flash models", () => {
+			const result = buildInteractionsOptions({
+				thinkingEffort: "minimal",
+				modelId: "gemini-3-flash-preview",
+				previousInteractionId: null,
+			});
+			expect(result.google.thinkingLevel).toBe("minimal");
+		});
 	});
 });
