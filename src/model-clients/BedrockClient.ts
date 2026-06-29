@@ -69,14 +69,13 @@ export class BedrockClient implements ModelClient {
 		// Create abort controller with cleanup to prevent EventEmitter memory leaks
 		const { abortController, cleanup } = createAbortControllerFromToken(params.cancellationToken);
 
-		// For Anthropic models on Bedrock, pass config via providerOptions.
+		// For Anthropic models on Bedrock, pass thinking config via providerOptions.
 		// The createBedrockAnthropic provider uses AnthropicMessagesLanguageModel internally,
 		// so it accepts the same `anthropic` provider options as the direct Anthropic provider.
 		const useThinking = isThinkingEnabled(params.thinkingEffort) && isAnthropicModel(params.model);
 		// Haiku 4.5 on Bedrock rejects the `eager_input_streaming` field that
 		// @ai-sdk/anthropic adds to tools by default while streaming, returning HTTP 400.
 		// Other Anthropic models on Bedrock accept it, so scope the opt-out to Haiku 4.5;
-		// revisit once Bedrock finishes rolling out field support for it.
 		const disableEagerToolStreaming = params.model.includes("claude-haiku-4-5");
 		const providerOptions =
 			useThinking || disableEagerToolStreaming
